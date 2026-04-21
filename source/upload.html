@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZunoSync – Upload PDF to Knowledge Base</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #0f0f12;
+      color: #e4e4e7;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #18181b;
+      border: 1px solid #3f3f46;
+      border-radius: 12px;
+      padding: 2rem;
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.5rem 0; }
+    .sub { color: #a1a1aa; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      border-radius: 8px;
+      color: #e4e4e7;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    button:hover { background: #2563eb; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .message { margin-top: 1rem; padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; }
+    .message.success { background: #14532d; color: #86efac; }
+    .message.error { background: #450a0a; color: #fca5a5; }
+    .back { margin-top: 1.5rem; }
+    .back a { color: #3b82f6; text-decoration: none; }
+    .back a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Upload PDF to Knowledge Base</h1>
+    <p class="sub">PDFs are stored in Supabase and used by the chat (Knowledge Keeper).</p>
+    <form id="form">
+      <input type="file" id="file" accept=".pdf,application/pdf" required />
+      <button type="submit" id="btn">Upload</button>
+    </form>
+    <div id="message"></div>
+    <div class="back"><a href="/">← Back to Chat</a></div>
+  </div>
+  <script>
+    const form = document.getElementById('form');
+    const fileInput = document.getElementById('file');
+    const btn = document.getElementById('btn');
+    const messageEl = document.getElementById('message');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return;
+      messageEl.textContent = '';
+      messageEl.className = 'message';
+      btn.disabled = true;
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/documents/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.ok) {
+          messageEl.textContent = 'Uploaded. Document ID: ' + (data.id || '—') + (data.pages ? ' (' + data.pages + ' pages)' : '');
+          messageEl.className = 'message success';
+          fileInput.value = '';
+        } else {
+          messageEl.textContent = data.error || 'Upload failed';
+          messageEl.className = 'message error';
+        }
+      } catch (err) {
+        messageEl.textContent = err.message || 'Network error';
+        messageEl.className = 'message error';
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZunoSync – Content & Image Chat</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      background: #0f0f12;
+      color: #e4e4e7;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #27272a;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    .chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .msg {
+      max-width: 85%;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      line-height: 1.5;
+    }
+
+    .msg.user {
+      align-self: flex-end;
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .msg.assistant {
+      align-self: flex-start;
+      background: #27272a;
+      border: 1px solid #3f3f46;
+    }
+
+    .msg .label {
+      font-size: 0.75rem;
+      opacity: 0.8;
+      margin-bottom: 0.25rem;
+    }
+
+    .msg .content {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .msg .platform-block {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #3f3f46;
+    }
+
+    .msg .platform-block .platform-name {
+      font-weight: 600;
+      color: #a1a1aa;
+      font-size: 0.85rem;
+    }
+
+    .msg .schedule-block {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #18181b;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+    }
+
+    .msg .schedule-block .schedule-title {
+      font-weight: 600;
+      color: #a1a1aa;
+      font-size: 0.85rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .msg .schedule-block .schedule-message {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .msg .schedule-block .schedule-times {
+      font-size: 0.85rem;
+      color: #a1a1aa;
+    }
+
+    .msg img.gen-image {
+      max-width: 100%;
+      border-radius: 8px;
+      margin-top: 0.5rem;
+      border: 1px solid #3f3f46;
+    }
+
+    .msg .buttons {
+      margin-top: 0.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .msg .buttons button {
+      padding: 0.4rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #e4e4e7;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .msg .buttons button:hover {
+      background: #27272a;
+    }
+
+    .msg .buttons button.primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+    }
+
+    .input-row {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #27272a;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .input-row input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #e4e4e7;
+      font-size: 1rem;
+    }
+
+    .input-row input::placeholder {
+      color: #71717a;
+    }
+
+    .input-row input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+
+    .input-row button {
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 500;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .input-row button:hover {
+      background: #2563eb;
+    }
+
+    .input-row button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .input-row button#endChat {
+      background: #27272a;
+      color: #a1a1aa;
+      border: 1px solid #3f3f46;
+    }
+
+    .input-row button#endChat:hover {
+      background: #3f3f46;
+      color: #e4e4e7;
+    }
+
+    .typing {
+      color: #71717a;
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #f87171;
+      font-size: 0.9rem;
+    }
+
+    /* Image upload & confirmation UI */
+    .input-row input[type="file"] {
+      display: none;
+    }
+
+    .attach-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .attach-wrap .file-preview {
+      font-size: 0.8rem;
+      color: #a1a1aa;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .attach-wrap .file-preview img {
+      max-height: 36px;
+      max-width: 60px;
+      object-fit: cover;
+      border-radius: 6px;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
+    .attach-wrap button#attachBtn {
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #18181b;
+      color: #a1a1aa;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .attach-wrap button#attachBtn:hover {
+      background: #27272a;
+      color: #e4e4e7;
+    }
+
+    .confirm-panel {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #27272a;
+      background: #18181b;
+      border-left: 3px solid #3b82f6;
+    }
+
+    .confirm-panel h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.95rem;
+      color: #e4e4e7;
+    }
+
+    .confirm-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .confirm-options button {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #27272a;
+      color: #e4e4e7;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .confirm-options button:hover {
+      background: #3f3f46;
+    }
+
+    .confirm-options button.selected,
+    .confirm-content-type-buttons button.content-type-btn.selected {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.2);
+      color: #93c5fd;
+    }
+
+    .confirm-content-type-buttons button.content-type-btn {
+      padding: 0.5rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid #3f3f46;
+      background: #27272a;
+      color: #e4e4e7;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .confirm-content-type-buttons button.content-type-btn:hover {
+      background: #3f3f46;
+    }
+
+    .confirm-platforms {
+      margin-bottom: 0.75rem;
+    }
+
+    .confirm-platforms label {
+      display: inline-block;
+      margin-right: 1rem;
+      font-size: 0.85rem;
+      color: #a1a1aa;
+      cursor: pointer;
+    }
+
+    .confirm-platforms input {
+      margin-right: 0.35rem;
+    }
+
+    .confirm-panel .confirm-actions {
+      margin-top: 0.75rem;
+    }
+
+    .confirm-panel .confirm-actions button.primary {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .msg.user .attached-preview {
+      margin-top: 0.5rem;
+    }
+
+    .msg.user .attached-preview img {
+      max-width: 120px;
+      max-height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">ZunoSync – Content & Image Chat <a href="/upload.html"
+      style="color:#a1a1aa;font-size:0.85rem;font-weight:normal;margin-left:0.5rem;">Upload PDF</a></div>
+  <div class="chat" id="chat"></div>
+  <div id="confirmPanel" class="confirm-panel" style="display: none;">
+    <h4 id="confirmTitle">What would you like to do?</h4>
+    <div class="confirm-options" id="confirmOptions"></div>
+    <div class="confirm-platforms" id="confirmPlatforms"></div>
+    <div class="confirm-actions"><button type="button" class="primary" id="confirmBtn">Confirm</button></div>
+  </div>
+  <div class="input-row">
+    <div class="attach-wrap">
+      <input type="file" id="mediaFile"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/x-msvideo" />
+      <button type="button" id="attachBtn" title="Attach image or video">📎 Attach image</button>
+      <span class="file-preview" id="filePreview"></span>
+    </div>
+    <input type="text" id="input" placeholder="e.g. Give me content for Big Billion Days and generate an image"
+      autocomplete="off" />
+    <button type="button" id="send">Send</button>
+    <button type="button" id="endChat" title="End chat and save summary so you can continue later">End chat</button>
+    <button type="button" id="newChat" title="Start a completely new conversation without previous context">New chat</button>
+  </div>
+  <div id="sessionNotice"
+    style="display:none; padding:0.35rem 1rem; font-size:0.8rem; color:#a1a1aa; background:#18181b; border-top:1px solid #27272a;">
+  </div>
+
+  <script>
+    // When opened as file://, use the default server URL so fetch works (server must allow CORS).
+    const API_BASE = (window.location.protocol === 'file:' || !window.location.origin || window.location.origin === 'null')
+      ? 'http://localhost:3000'
+      : '';
+    if (API_BASE) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'padding:0.5rem 1rem;background:#27272a;color:#a1a1aa;font-size:0.85rem;border-bottom:1px solid #3f3f46';
+      notice.textContent = 'Using server at ' + API_BASE + '. For best experience run: npm run server — then open ' + API_BASE;
+      document.body.insertBefore(notice, document.body.firstChild);
+    }
+
+    const chatEl = document.getElementById('chat');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const endChatBtn = document.getElementById('endChat');
+    const newChatBtn = document.getElementById('newChat');
+    const sessionNotice = document.getElementById('sessionNotice');
+    const mediaFileEl = document.getElementById('mediaFile');
+    const attachBtn = document.getElementById('attachBtn');
+    const filePreview = document.getElementById('filePreview');
+    const confirmPanel = document.getElementById('confirmPanel');
+    const confirmTitle = document.getElementById('confirmTitle');
+    const confirmOptions = document.getElementById('confirmOptions');
+    const confirmPlatforms = document.getElementById('confirmPlatforms');
+    const confirmBtn = document.getElementById('confirmBtn');
+
+    // Stable user/session id for conversation continuity (Redis + DB). Stored in localStorage.
+    function getOrCreateUserId() {
+      // Testing default: force a stable numeric user id.
+      const id = '2';
+      localStorage.setItem('zunosync_user_id', id);
+      return id;
+    }
+    function getOrCreateThreadId() {
+      return localStorage.getItem('zunosync_thread_id') || 'default';
+    }
+    function setThreadId(id) {
+      if (id) localStorage.setItem('zunosync_thread_id', id);
+    }
+    // Testing default: force a stable numeric workspace id.
+    const STATIC_WORKSPACE_ID = '2';
+    let pendingConfirmation = null;
+    let forceResetContextNextSend = false;
+    // Testing: static company id. In production, frontend team sends userId + companyId from auth/session.
+    const STATIC_COMPANY_ID = '00000000-0000-0000-0000-000000000001';
+    (function showSessionNotice() {
+      const uid = getOrCreateUserId();
+      sessionNotice.textContent = 'Conversation is saved for this browser (ID: ' + uid.slice(0, 12) + '…). Use "End chat" to save a summary and continue later.';
+      sessionNotice.style.display = 'block';
+    })();
+
+    function startNewChatSession() {
+      // Clear stored thread id so backend generates a fresh thread.
+      localStorage.removeItem('zunosync_thread_id');
+      // Clear UI.
+      chatEl.innerHTML = '';
+      inputEl.value = '';
+      if (mediaFileEl.value) mediaFileEl.value = '';
+      filePreview.textContent = '';
+      filePreview.innerHTML = '';
+      confirmPanel.style.display = 'none';
+      pendingConfirmation = null;
+      // Ensure the next send tells the backend to ignore any stored context/summary.
+      forceResetContextNextSend = true;
+      sessionNotice.textContent = 'New chat started. This conversation will not use previous context.';
+      sessionNotice.style.display = 'block';
+      sessionNotice.style.color = '#a1a1aa';
+    }
+
+    function appendMessage(role, content, options = {}) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      if (role === 'user') {
+        let userHtml = `<div class="content">${escapeHtml(content)}</div>`;
+        if (options.attachedPreviewUrl) {
+          userHtml += `<div class="attached-preview"><img src="${escapeAttr(options.attachedPreviewUrl)}" alt="Attached" /></div>`;
+        }
+        div.innerHTML = userHtml;
+      } else {
+        let html = '';
+        // Keep preview payload available for button handlers.
+        if (options.previewResult) {
+          div.dataset.preview = JSON.stringify(options.previewResult);
+        }
+        if (options.platforms?.length) {
+          html += options.platforms.map(p => `
+            <div class="platform-block">
+              <div class="platform-name">[${escapeHtml(p.type)}]</div>
+              <div class="content">${escapeHtml(p.content || '')}</div>
+            </div>
+          `).join('');
+        } else if (content) {
+          html += `<div class="content">${escapeHtml(content)}</div>`;
+        }
+        if (options.imageUrls?.length) {
+          options.imageUrls.forEach(url => {
+            html += `<img class="gen-image" src="${escapeAttr(url)}" alt="Generated" />`;
+          });
+        }
+        if (options.schedulerResult) {
+          const sr = options.schedulerResult;
+          let scheduleHtml = '<div class="schedule-block"><div class="schedule-title">Schedule</div>';
+          if (sr.message) scheduleHtml += `<div class="schedule-message">${escapeHtml(sr.message)}</div>`;
+          if (sr.bestTime?.times?.length) {
+            scheduleHtml += '<div class="schedule-times">Best times: ' + sr.bestTime.times.map(t => (t.platform || t.platform_name) + ' ' + (t.best_time_utc || t.time)).join(', ') + '</div>';
+          }
+          if (sr.scheduleResult?.scheduled_at) scheduleHtml += `<div class="schedule-times">Scheduled at: ${escapeHtml(sr.scheduleResult.scheduled_at)}</div>`;
+          scheduleHtml += '</div>';
+          html += scheduleHtml;
+        }
+        if (options.buttons?.length) {
+          html += '<div class="buttons">' + options.buttons.map(b => {
+            // Copy full content to clipboard
+            if (b.action === 'copy') {
+              return `<button class="primary" data-copy="${escapeAttr(options.rawCopy || '')}" onclick="var t=this.getAttribute('data-copy'); if(t){navigator.clipboard.writeText(t); alert('Copied!');} else alert('Nothing to copy');">${escapeHtml(b.label || b.action)}</button>`;
+            }
+            // Open first generated image in a new tab
+            if (b.action === 'download' && options.imageUrls?.[0]) {
+              return `<button onclick="window.open('${escapeAttr(options.imageUrls[0])}')">${escapeHtml(b.label || b.action)}</button>`;
+            }
+            // Schedule helper (kept as a simple hint)
+            if (b.action === 'schedule') {
+              return `<button class="schedule-btn" onclick="alert('Schedule: Say \\'post now\\' to publish, or \\'schedule for [date]\\' to schedule. Supabase must be configured for saving.')">${escapeHtml(b.label || b.action)}</button>`;
+            }
+            // Preview payloads (render backend previewResult)
+            if (b.action === 'preview') {
+              return `<button onclick="(function(btn){try{var box=btn.closest('.msg');var raw=box&&box.dataset?box.dataset.preview:null;var data=raw?JSON.parse(raw):null;if(window.showPreviewModal){showPreviewModal(data);} else {alert('Preview UI not available');}}catch(e){alert('Preview error: '+e.message);}})(this)">${escapeHtml(b.label || 'Preview')}</button>`;
+            }
+            // NEW: quick paths – immediately resume with a selection using
+            // the platform set encoded on the button (all or single).
+            // We intentionally do NOT override contentType/includeMedia here so that
+            // the backend can keep the correct context (e.g. video vs image).
+            if (b.action === 'quick_create_post_all' || b.action === 'quick_create_post_single') {
+              const plats = Array.isArray(b.platforms) ? b.platforms.join(',') : '';
+              const btnClass = b.action === 'quick_create_post_all' ? 'primary' : '';
+              return `<button class="${btnClass}" data-platforms="${escapeAttr(plats)}" onclick="(function(btn){var csv=btn.getAttribute('data-platforms')||'';var plats=csv?csv.split(',').filter(Boolean):[];if(window.sendResume){sendResume({ action: 'create_post', platforms: plats });}})(this)">${escapeHtml(b.label || b.action)}</button>`;
+            }
+            // Fallback for any future/unknown button actions
+            return `<button onclick="alert('${escapeAttr(b.label || b.action)} – coming soon')">${escapeHtml(b.label || b.action)}</button>`;
+          }).join('') + '</div>';
+        }
+        div.innerHTML = html || '<div class="content">(no content)</div>';
+      }
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+
+    // Simple modal to render Preview Pro payloads.
+    function showPreviewModal(previewResult) {
+      if (!previewResult || !Array.isArray(previewResult.previews) || previewResult.previews.length === 0) {
+        alert('No previews available for this message yet.');
+        return;
+      }
+      let modal = document.getElementById('preview-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'preview-modal';
+        modal.style.position = 'fixed';
+        modal.style.inset = '0';
+        modal.style.background = 'rgba(0,0,0,0.6)';
+        modal.style.zIndex = '9999';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        document.body.appendChild(modal);
+      }
+      const card = document.createElement('div');
+      card.style.width = 'min(900px, 92vw)';
+      card.style.maxHeight = '85vh';
+      card.style.overflow = 'auto';
+      card.style.background = '#0b1220';
+      card.style.border = '1px solid rgba(255,255,255,0.08)';
+      card.style.borderRadius = '12px';
+      card.style.padding = '14px';
+      card.style.boxShadow = '0 20px 60px rgba(0,0,0,0.45)';
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="font-weight:700;color:#e5e7eb;">Previews</div>
+          <button style="background:#111827;color:#e5e7eb;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:6px 10px;cursor:pointer;">Close</button>
+        </div>
+      `;
+      card.querySelector('button').onclick = () => modal.remove();
+
+      const list = document.createElement('div');
+      list.style.display = 'grid';
+      list.style.gridTemplateColumns = 'repeat(auto-fit, minmax(260px, 1fr))';
+      list.style.gap = '12px';
+      previewResult.previews.forEach((p) => {
+        const item = document.createElement('div');
+        item.style.border = '1px solid rgba(255,255,255,0.08)';
+        item.style.borderRadius = '12px';
+        item.style.padding = '10px';
+        item.style.background = 'rgba(255,255,255,0.03)';
+        const plat = escapeHtml(String(p.platform || 'platform'));
+        const cap = escapeHtml(String(p.caption || ''));
+        const mediaUrl = String(p.mediaUrl || '');
+        item.innerHTML = `
+          <div style="font-size:12px;color:#a1a1aa;font-weight:700;margin-bottom:6px;">${plat.toUpperCase()}</div>
+          ${mediaUrl ? `<img src="${escapeAttr(mediaUrl)}" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.08);margin-bottom:8px;" />` : ''}
+          <div style="white-space:pre-wrap;font-size:13px;color:#e5e7eb;line-height:1.35;">${cap}</div>
+        `;
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      modal.innerHTML = '';
+      modal.appendChild(card);
+    }
+    window.showPreviewModal = showPreviewModal;
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s ?? '';
+      return d.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function setTyping(on) {
+      let el = document.getElementById('typing');
+      if (on && !el) {
+        el = document.createElement('div');
+        el.id = 'typing';
+        el.className = 'msg assistant typing';
+        el.textContent = 'Thinking…';
+        chatEl.appendChild(el);
+        chatEl.scrollTop = chatEl.scrollHeight;
+      }
+      if (el) el.style.display = on ? 'block' : 'none';
+    }
+
+    function showConfirmPanel(data) {
+      pendingConfirmation = {
+        threadId: data.threadId,
+        options: data.confirmationOptions || [],
+        mediaAnalysis: data.mediaAnalysis,
+        message: data.finalReply || 'What would you like to do?',
+      };
+      confirmTitle.textContent = pendingConfirmation.message || 'Confirm selections';
+      const actionOpts = pendingConfirmation.options.filter(o => o.action);
+      const platformOpt = pendingConfirmation.options.find(o => o.type === 'platform_selector');
+      const contentTypeOpt = pendingConfirmation.options.find(o => o.type === 'content_type_selector');
+      const contentTypeButtonsOpt = pendingConfirmation.options.find(o => o.type === 'content_type_buttons');
+      const topicOpt = pendingConfirmation.options.find(o => o.type === 'topic_input');
+
+      confirmOptions.innerHTML = '';
+      let selectedAction = (actionOpts[0] && actionOpts[0].action) || 'create_post';
+      actionOpts.forEach(o => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = o.label || o.action;
+        btn.dataset.action = o.action;
+        btn.onclick = () => {
+          confirmOptions.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectedAction = o.action;
+        };
+        if (o.action === selectedAction) btn.classList.add('selected');
+        confirmOptions.appendChild(btn);
+      });
+
+      confirmPlatforms.innerHTML = '';
+      let topicText = '';
+      if (topicOpt) {
+        const wrap = document.createElement('div');
+        wrap.style.marginBottom = '0.75rem';
+        const label = document.createElement('div');
+        label.style.fontSize = '0.85rem';
+        label.style.fontWeight = '600';
+        label.style.color = '#a1a1aa';
+        label.style.marginBottom = '0.35rem';
+        label.textContent = topicOpt.label || 'What is this post about?';
+        const input = document.createElement('textarea');
+        input.rows = 3;
+        input.style.width = '100%';
+        input.style.resize = 'vertical';
+        input.placeholder = topicOpt.placeholder || 'Type the topic here…';
+        input.value = topicOpt.defaultValue || '';
+        input.oninput = () => { topicText = input.value; };
+        topicText = input.value || '';
+        wrap.appendChild(label);
+        wrap.appendChild(input);
+        confirmPlatforms.appendChild(wrap);
+      }
+      const platforms = platformOpt?.options || ['instagram', 'x', 'linkedin', 'facebook', 'tiktok', 'youtube'];
+
+      let selectedContentType = (contentTypeOpt?.defaultSelected) || 'image';
+      let selectedIncludeMedia = true;
+      if (contentTypeButtonsOpt?.options?.length) {
+        const defaultCt = contentTypeButtonsOpt.defaultSelected || 'image';
+        const ctRow = document.createElement('div');
+        ctRow.className = 'confirm-content-type-buttons';
+        ctRow.style.marginTop = '0.75rem';
+        ctRow.style.marginBottom = '0.5rem';
+        const ctLabel = document.createElement('div');
+        ctLabel.style.fontSize = '0.85rem';
+        ctLabel.style.color = '#a1a1aa';
+        ctLabel.style.marginBottom = '0.35rem';
+        ctLabel.textContent = contentTypeButtonsOpt.label || 'What to create';
+        ctRow.appendChild(ctLabel);
+        const btnWrap = document.createElement('div');
+        btnWrap.style.display = 'flex';
+        btnWrap.style.flexWrap = 'wrap';
+        btnWrap.style.gap = '0.5rem';
+        let hasSelected = false;
+        contentTypeButtonsOpt.options.forEach((opt) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = opt.label || opt.contentType;
+          btn.dataset.contentType = opt.contentType || 'image';
+          btn.dataset.includeMedia = String(opt.includeMedia !== false);
+          btn.className = 'confirm-options content-type-btn';
+          const isDefault = (opt.contentType || 'image') === defaultCt && !hasSelected;
+          if (isDefault) {
+            selectedContentType = opt.contentType || 'image';
+            selectedIncludeMedia = opt.includeMedia !== false;
+            btn.classList.add('selected');
+            hasSelected = true;
+          }
+          btn.onclick = () => {
+            btnWrap.querySelectorAll('button.content-type-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedContentType = opt.contentType || 'image';
+            selectedIncludeMedia = opt.includeMedia !== false;
+          };
+          btnWrap.appendChild(btn);
+        });
+        if (!hasSelected && contentTypeButtonsOpt.options.length) {
+          const first = contentTypeButtonsOpt.options[0];
+          selectedContentType = first?.contentType || 'image';
+          selectedIncludeMedia = first?.includeMedia !== false;
+          btnWrap.querySelector('button.content-type-btn')?.classList.add('selected');
+        }
+        ctRow.appendChild(btnWrap);
+        confirmPlatforms.appendChild(ctRow);
+      } else if (contentTypeOpt?.options?.length) {
+        const ctLabel = document.createElement('label');
+        ctLabel.style.marginRight = '0.5rem';
+        ctLabel.textContent = 'Content type: ';
+        confirmPlatforms.appendChild(ctLabel);
+        contentTypeOpt.options.forEach((opt) => {
+          const r = document.createElement('label');
+          const radio = document.createElement('input');
+          radio.type = 'radio';
+          radio.name = 'contentType';
+          radio.value = opt;
+          radio.checked = opt === selectedContentType;
+          radio.onchange = () => {
+            selectedContentType = opt;
+          };
+          r.appendChild(radio);
+          r.appendChild(document.createTextNode(' ' + opt));
+          confirmPlatforms.appendChild(r);
+        });
+      }
+
+      confirmBtn.onclick = () => {
+        const platforms = platformOpt?.defaultSelected || ['instagram', 'x', 'linkedin'];
+
+        const contentTypeRadio = confirmPlatforms.querySelector('input[name="contentType"]:checked');
+        const contentType = contentTypeRadio ? contentTypeRadio.value : selectedContentType;
+        const includeMedia = contentTypeButtonsOpt?.options?.length ? selectedIncludeMedia : true;
+
+        const trimmedTopic = String(topicText || '').trim();
+        // If the panel is only asking for topic, resume with a dedicated action so
+        // the backend can keep pendingCallAgents and continue.
+        const resumeAction = topicOpt && (!actionOpts.length || selectedAction === 'create_post') ? 'topic_selected' : selectedAction;
+        sendResume({
+          action: resumeAction,
+          platforms,
+          contentType: contentType,
+          includeMedia: includeMedia,
+          ...(trimmedTopic ? { contentTopic: trimmedTopic, rawContent: trimmedTopic } : {}),
+        });
+        confirmPanel.style.display = 'none';
+        pendingConfirmation = null;
+      };
+      confirmPanel.style.display = 'block';
+    }
+
+    async function sendResume(selection) {
+      const threadId = pendingConfirmation?.threadId || getOrCreateThreadId();
+      setTyping(true);
+      sendBtn.disabled = true;
+      endChatBtn.disabled = true;
+      try {
+        const body = {
+          message: '',
+          resumeWithSelection: true,
+          selection: JSON.stringify(selection),
+          userId: getOrCreateUserId(),
+          sessionId: getOrCreateUserId(),
+          threadId,
+          companyId: STATIC_COMPANY_ID,
+          workspaceId: STATIC_WORKSPACE_ID,
+        };
+        if (forceResetContextNextSend) {
+          body.resetContext = true;
+          forceResetContextNextSend = false;
+        }
+        const res = await fetch(API_BASE + '/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        setTyping(false);
+        if (!res.ok) {
+          appendMessage('assistant', `Error: ${data.error || res.statusText}`, {});
+          return;
+        }
+        setThreadId(data.threadId);
+        const schedulingOnly = data.schedulingOnlyReply === true;
+        const contentResult = data.contentResult || {};
+        const platforms = schedulingOnly ? [] : (contentResult.platforms || []);
+        const copyText = contentResult.copy || (platforms.length ? platforms.map(p => `[${p.type}]\n${p.content}`).join('\n\n') : '');
+        const imageUrls = schedulingOnly ? [] : (data.mediaResult?.outputs || []).flatMap(o => o.urls || []);
+        const mediaTypeForButtons =
+          data.mediaResult?.outputs?.[0]?.type ||
+          (imageUrls.some(u => typeof u === 'string' && u.toLowerCase().endsWith('.mp4')) ? 'video' : 'image');
+        appendMessage('assistant', data.finalReply || '', {
+          platforms: platforms.length ? platforms : null,
+          rawCopy: copyText,
+          imageUrls,
+          buttons: data.buttons || [],
+          previewResult: data.previewResult || null,
+          schedulerResult: data.schedulerResult || null,
+          contentType: mediaTypeForButtons,
+        });
+      } catch (e) {
+        setTyping(false);
+        appendMessage('assistant', `Error: ${e.message}`, {});
+      } finally {
+        sendBtn.disabled = false;
+        endChatBtn.disabled = false;
+      }
+    }
+
+    async function send(options = {}) {
+      const file = mediaFileEl.files && mediaFileEl.files[0];
+      const message = options.endChat ? 'End chat and save summary.' : inputEl.value.trim();
+      if (!message && !file && !options.endChat) return;
+      const displayMessage = options.endChat ? 'End chat' : (message || 'What can you do with this?');
+      let attachedPreviewUrl = null;
+      if (file && file.type.startsWith('image/')) {
+        attachedPreviewUrl = URL.createObjectURL(file);
+      }
+      if (!options.endChat) {
+        inputEl.value = '';
+        if (mediaFileEl.value) mediaFileEl.value = '';
+        filePreview.textContent = '';
+        filePreview.innerHTML = '';
+      }
+      appendMessage('user', displayMessage, { attachedPreviewUrl: attachedPreviewUrl || undefined });
+      if (attachedPreviewUrl) URL.revokeObjectURL(attachedPreviewUrl);
+      sendBtn.disabled = true;
+      endChatBtn.disabled = true;
+      setTyping(true);
+      try {
+        const userId = getOrCreateUserId();
+        const threadId = getOrCreateThreadId();
+        let res;
+        if (file) {
+          const form = new FormData();
+          form.append('message', options.endChat ? 'Goodbye, save a summary of our conversation so I can continue later.' : (message || 'What can you do with this?'));
+          form.append('mediaFile', file);
+          form.append('userId', userId);
+          form.append('sessionId', userId);
+          form.append('threadId', threadId);
+          form.append('companyId', STATIC_COMPANY_ID);
+          form.append('workspaceId', STATIC_WORKSPACE_ID);
+          if (forceResetContextNextSend) form.append('resetContext', 'true');
+          if (options.endChat) form.append('endChat', 'true');
+          res = await fetch(API_BASE + '/chat', { method: 'POST', body: form });
+        } else {
+          const body = {
+            message: options.endChat ? 'Goodbye, save a summary of our conversation so I can continue later.' : message,
+            userId,
+            sessionId: userId,
+            threadId,
+            companyId: STATIC_COMPANY_ID,
+            workspaceId: STATIC_WORKSPACE_ID,
+            endChat: options.endChat === true,
+          };
+          if (forceResetContextNextSend) {
+            body.resetContext = true;
+            forceResetContextNextSend = false;
+          }
+          res = await fetch(API_BASE + '/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+        }
+        const data = await res.json();
+        setTyping(false);
+        setThreadId(data.threadId);
+        if (!res.ok) {
+          appendMessage('assistant', `Error: ${data.error || res.statusText}`, {});
+          return;
+        }
+        if (data.awaitingConfirmation && data.confirmationOptions && data.confirmationOptions.length) {
+          showConfirmPanel(data);
+          return;
+        }
+        const schedulingOnly = data.schedulingOnlyReply === true;
+        const contentResult = data.contentResult || {};
+        const platforms = schedulingOnly ? [] : (contentResult.platforms || []);
+        const copyText = contentResult.copy || (platforms.length ? platforms.map(p => `[${p.type}]\n${p.content}`).join('\n\n') : '');
+        const imageUrls = schedulingOnly ? [] : (data.mediaResult?.outputs || []).flatMap(o => o.urls || []);
+        const mediaTypeForButtons =
+          data.mediaResult?.outputs?.[0]?.type ||
+          (imageUrls.some(u => typeof u === 'string' && u.toLowerCase().endsWith('.mp4')) ? 'video' : 'image');
+        appendMessage('assistant', data.finalReply || '', {
+          platforms: platforms.length ? platforms : null,
+          rawCopy: copyText,
+          imageUrls,
+          buttons: data.buttons || [],
+          previewResult: data.previewResult || null,
+          schedulerResult: data.schedulerResult || null,
+          contentType: mediaTypeForButtons,
+        });
+        if (data.chatEnd && data.endSummary) {
+          sessionNotice.textContent = 'Session saved. Summary: ' + (data.endSummary || '').slice(0, 80) + '… — You can continue the conversation next time.';
+          sessionNotice.style.color = '#86efac';
+        }
+      } catch (e) {
+        setTyping(false);
+        appendMessage('assistant', `Error: ${e.message}`, {});
+      } finally {
+        sendBtn.disabled = false;
+        endChatBtn.disabled = false;
+      }
+    }
+
+    attachBtn.addEventListener('click', () => mediaFileEl.click());
+    mediaFileEl.addEventListener('change', () => {
+      const file = mediaFileEl.files && mediaFileEl.files[0];
+      filePreview.innerHTML = '';
+      filePreview.textContent = '';
+      if (file) {
+        filePreview.textContent = file.name;
+        if (file.type.startsWith('image/')) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(file);
+          img.alt = file.name;
+          filePreview.insertBefore(img, filePreview.firstChild);
+        }
+      }
+    });
+
+    sendBtn.addEventListener('click', () => send({}));
+    endChatBtn.addEventListener('click', () => send({ endChat: true }));
+    newChatBtn.addEventListener('click', () => startNewChatSession());
+    inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') send({}); });
+  </script>
+</body>
+
+</html>
